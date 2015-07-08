@@ -636,9 +636,22 @@ static int mipi_dsi_power_tft_request(void)
 	return rc;
 }
 
+#if defined(CONFIG_MACH_JACTIVE_ATT) 
+static int first_boot = 0; 
+#endif 
+
 static int mipi_panel_power_tft(int enable)
 {
 	int rc = 0;
+
+#if defined(CONFIG_MACH_JACTIVE_ATT) 
+     	if(first_boot < 2) { 
+       		first_boot++; 
+        	printk("<0> First init Occurred ..... Finished Successfully \n"); 
+        	return 0; 
+     	} 
+#endif
+
 	pr_info("%s %d", __func__, enable);
 	if (enable) {
 #if defined(CONFIG_MACH_JACTIVE_EUR)
