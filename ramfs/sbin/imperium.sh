@@ -1,6 +1,7 @@
 #!/sbin/busybox sh
 
 BB=/sbin/busybox
+PROFILE_PATH=/data/.imperium
 
 # Mounting partition in RW mode
 
@@ -11,6 +12,13 @@ OPEN_RW()
 }
 OPEN_RW;
 
+# Installing Busybox
+/system/xbin/busybox --install -s /system/xbin/
+$BB chmod 06755 /system/xbin/busybox
+
+# Fixing ROOT
+/system/xbin/daemonsu --auto-daemon &
+
 sleep 1;
 
 # Run Qualcomm scripts
@@ -20,9 +28,15 @@ sleep 1;
 
 OPEN_RW;
 
+# Create init.d folder if missing
+if [ ! -d /system/etc/init.d ]; then
+	$BB mkdir -p /system/etc/init.d/
+	$BB chmod 755 /system/etc/init.d/
+fi
+
 # Symlink
 if [ ! -e /cpufreq ]; then
-	$BB ln -s /sys/devices/system/cpu/cpu0/cpufreq /cpufreq;
+	$BB ln -s /sys/devices/system/cpu/cpu0/cpufreq/ /cpufreq;
 	$BB ln -s /sys/devices/system/cpu/cpufreq/ /cpugov;
 fi;
 
@@ -30,6 +44,8 @@ fi;
 $BB rm -rf /cache/lost+found/* 2> /dev/null;
 $BB rm -rf /data/lost+found/* 2> /dev/null;
 $BB rm -rf /data/tombstones/* 2> /dev/null;
+
+OPEN_RW;
 
 CRITICAL_PERM_FIX()
 {
@@ -44,9 +60,9 @@ CRITICAL_PERM_FIX()
 	$BB chmod -R 06755 /sbin/ext/;
 	$BB chmod -R 0777 /data/anr/;
 	$BB chmod -R 0400 /data/tombstones;
-	$BB chmod 06755 /sbin/busybox;
 	$BB chown -R root:root /data/property;
 	$BB chmod -R 0700 /data/property;
+	$BB chmod 06755 /sbin/busybox;
 }
 CRITICAL_PERM_FIX;
 
@@ -56,9 +72,6 @@ setprop persist.service.adb.enable 1
 setprop pm.sleep_mode 1
 setprop logcat.live disable
 setprop profiler.force_disable_ulog 1
-
-# Fixing ROOT
-/system/xbin/daemonsu --auto-daemon &
 
 # STweaks suppot
 $BB rm -f /system/app/HybridTweaks.apk > /dev/null 2>&1;
@@ -83,7 +96,7 @@ ccxmlsum=`md5sum /res/customconfig/customconfig.xml | awk '{print $1}'`
 if [ "a${ccxmlsum}" != "a`cat /data/.imperium/.ccxmlsum`" ];
 then
    $BB rm -f /data/.imperium/*.profile;
-   echo ${ccxmlsum} > /data/.imperium/.ccxmlsum;
+   $BB echo ${ccxmlsum} > /data/.imperium/.ccxmlsum;
 fi;
 
 [ ! -f /data/.imperium/default.profile ] && cp /res/customconfig/default.profile /data/.imperium/default.profile;
@@ -91,45 +104,45 @@ fi;
 [ ! -f /data/.imperium/balanced.profile ] && cp /res/customconfig/balanced.profile /data/.imperium/balanced.profile;
 [ ! -f /data/.imperium/performance.profile ] && cp /res/customconfig/performance.profile /data/.imperium/performance.profile;
 
+chmod -R 0777 /data/.imperium/;
+chmod 777 $PROFILE_PATH/default.profile
+
 read_defaults;
 read_config;
 
 # Android logger
 if [ "$logger_mode" == "on" ]; then
-	echo "1" > /sys/kernel/logger_mode/logger_mode;
+	$BB echo "1" > /sys/kernel/logger_mode/logger_mode;
 else
-	echo "0" > /sys/kernel/logger_mode/logger_mode;
+	$BB echo "0" > /sys/kernel/logger_mode/logger_mode;
 fi;
 
 # zRam
 if [ "$sammyzram" == "on" ];then
 UNIT="M"
 	/system/bin/rtccd3 -a "$zramdisksize$UNIT"
-	echo "0" > /proc/sys/vm/page-cluster;
+	$BB echo "0" > /proc/sys/vm/page-cluster;
 fi;
 
-# scheduler
-	echo "$int_scheduler" > /sys/block/mmcblk0/queue/scheduler;
-	echo "$int_read_ahead_kb" > /sys/block/mmcblk0/bdi/read_ahead_kb;
-	echo "$ext_scheduler" > /sys/block/mmcblk1/queue/scheduler;
-	echo "$ext_read_ahead_kb" > /sys/block/mmcblk1/bdi/read_ahead_kb;
+# Scheduler
+	$BB echo "$int_scheduler" > /sys/block/mmcblk0/queue/scheduler;
+	$BB echo "$int_read_ahead_kb" > /sys/block/mmcblk0/bdi/read_ahead_kb;
+	$BB echo "$ext_scheduler" > /sys/block/mmcblk1/queue/scheduler;
+	$BB echo "$ext_read_ahead_kb" > /sys/block/mmcblk1/bdi/read_ahead_kb;
 
 # CPU
-	echo "$scaling_governor_cpu0" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor;
-	echo "$scaling_governor_cpu0" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor;
-	echo "$scaling_governor_cpu0" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor;
-	echo "$scaling_governor_cpu0" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor;
-	echo "$scaling_max_freq" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
-	echo "$scaling_min_freq" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
-	echo "$scaling_max_freq" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq;
-	echo "$scaling_min_freq" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq;
-	echo "$scaling_max_freq" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq;
-	echo "$scaling_min_freq" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq;
-	echo "$scaling_max_freq" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq;
-	echo "$scaling_min_freq" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq;
-
-# Enable kmem interface for everyone by GM
-	echo "0" > /proc/sys/kernel/kptr_restrict;
+	$BB echo "$scaling_governor_cpu0" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor;
+	$BB echo "$scaling_governor_cpu0" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor;
+	$BB echo "$scaling_governor_cpu0" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor;
+	$BB echo "$scaling_governor_cpu0" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor;
+	$BB echo "$scaling_max_freq" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq;
+	$BB echo "$scaling_min_freq" > /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq;
+	$BB echo "$scaling_max_freq" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq;
+	$BB echo "$scaling_min_freq" > /sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq;
+	$BB echo "$scaling_max_freq" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq;
+	$BB echo "$scaling_min_freq" > /sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq;
+	$BB echo "$scaling_max_freq" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq;
+	$BB echo "$scaling_min_freq" > /sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq;
 
 # Apply STweaks defaults
 export CONFIG_BOOTING=1
@@ -138,8 +151,18 @@ export CONFIG_BOOTING=
 
 OPEN_RW;
 
+$BB chmod 777 $PROFILE_PATH/default.profile
+
 # Fix critical perms again after init.d mess
 	CRITICAL_PERM_FIX;
 	
+sleep 2;
+
 # script finish here, so let me know when
+rm /data/local/tmp/Imperium_LL_Kernel
+touch /data/local/tmp/Imperium_LL_Kernel
 echo "Imperium LL Kernel script correctly applied" > /data/local/tmp/Imperium_LL_Kernel;
+
+$BB mount -t rootfs -o remount,ro rootfs
+$BB mount -o remount,ro /system
+

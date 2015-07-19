@@ -2,14 +2,14 @@
 
 export PLATFORM="TW"
 export CURDATE=`date "+%m.%d.%Y"`
-export MUXEDNAMELONG="KT-SGS4-$MREV-$PLATFORM-$CARRIER-$CURDATE"
-export MUXEDNAMESHRT="KT-SGS4-$MREV-$PLATFORM-$CARRIER*"
-export KTVER="--$MUXEDNAMELONG--"
+export MUXEDNAMELONG="Imperium-$MREV-$PLATFORM-$CARRIER-$CURDATE"
+export MUXEDNAMESHRT="Imperium-$MREV-$PLATFORM-$CARRIER*"
+export IMPVER="--$MUXEDNAMELONG--"
 export KERNELDIR=`readlink -f .`
 export PARENT_DIR=`readlink -f ..`
 export INITRAMFS_DEST=$KERNELDIR/kernel/usr/initramfs
-export INITRAMFS_SOURCE=`readlink -f ..`/Ramdisk
-export INITRAMFS_BRANCH=$(echo $PLATFORM | awk '{print tolower($0)}')"-"$VERSION
+export INITRAMFS_SOURCE=$KERNELDIR/ramfs
+#export INITRAMFS_BRANCH=$(echo $PLATFORM | awk '{print tolower($0)}')"-"$VERSION
 export CONFIG_$PLATFORM_BUILD=y
 export PACKAGEDIR=$PARENT_DIR/Packages/$PLATFORM
 
@@ -22,15 +22,15 @@ export ARCH=arm
 #export CROSS_COMPILE=/media/storage/toolchain/linaro-4.7-12.10/bin/arm-linux-gnueabihf-
 #export CROSS_COMPILE=/media/storage/toolchain/arm-linux-androideabi-4.8/bin/arm-linux-androideabi-
 #export CROSS_COMPILE=/media/storage/toolchain/sabermod-arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
-export CROSS_COMPILE=/media/storage/toolchain/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux/bin/arm-linux-gnueabihf-
+#export CROSS_COMPILE=/media/storage/toolchain/gcc-linaro-arm-linux-gnueabihf-4.9-2014.09_linux/bin/arm-linux-gnueabihf-
 
-echo "** Checkout initramfs"
-cd $INITRAMFS_SOURCE
-git checkout $INITRAMFS_BRANCH
-if [ ! $? -eq 0 ]; then
-  exit 1
-fi
-cd $KERNELDIR
+#echo "** Checkout initramfs"
+#cd $INITRAMFS_SOURCE
+#git checkout $INITRAMFS_BRANCH
+#if [ ! $? -eq 0 ]; then
+#  exit 1
+#fi
+#cd $KERNELDIR
 
 time_start=$(date +%s.%N)
 
@@ -38,9 +38,9 @@ echo "** Remove old Package Files"
 rm -rf $PACKAGEDIR/*
 
 echo "** Setup Package Directory"
-mkdir -p $PACKAGEDIR/system/app
+mkdir -p $PACKAGEDIR/system/priv-app
 mkdir -p $PACKAGEDIR/system/lib/modules
-mkdir -p $PACKAGEDIR/system/etc/init.d
+#mkdir -p $PACKAGEDIR/system/etc/init.d
 
 echo "** Create initramfs dir"
 mkdir -p $INITRAMFS_DEST
@@ -66,24 +66,24 @@ if [ -z $BOARD ]; then
 fi
 
 echo "** Make the kernel"
-make VARIANT_DEFCONFIG=${BOARD}_${CARRIER}"_defconfig" KT_jf_defconfig SELINUX_DEFCONFIG=selinux_defconfig
-echo "** Modding .config file - "$KTVER
-sed -i 's,CONFIG_LOCALVERSION="-KT-SGS4",CONFIG_LOCALVERSION="'$KTVER'",' .config
+make VARIANT_DEFCONFIG=impjactive_defconfig jactive_eur_defconfig SELINUX_DEFCONFIG=selinux_defconfig
+echo "** Modding .config file - "$IMPVER
+#sed -i 's,CONFIG_LOCALVERSION="-KT-SGS4",CONFIG_LOCALVERSION="'$IMPVER'",' .config
 
-HOST_CHECK=`uname -n`
-if [ $HOST_CHECK = 'ktoonsez-VirtualBox' ] || [ $HOST_CHECK = 'task650-Underwear' ]; then
-	echo "Ktoonsez/task650 24!"
-	make -j24
-else
+#HOST_CHECK=`uname -n`
+#if [ $HOST_CHECK = 'ktoonsez-VirtualBox' ] || [ $HOST_CHECK = 'task650-Underwear' ]; then
+#	echo "Ktoonsez/task650 24!"
+#	make -j24
+#else
 	echo "Others! - " + $HOST_CHECK
 	make -j`grep 'processor' /proc/cpuinfo | wc -l`
-fi;
+#fi;
 
 echo "** Copy modules to Package"
 cp -a $(find . -name *.ko -print |grep -v initramfs) $PACKAGEDIR/system/lib/modules/
-if [ $ADD_KTWEAKER = 'Y' ]; then
-	cp $PARENT_DIR/ktapps/com.ktoonsez.KTweaker.apk $PACKAGEDIR/system/app/com.ktoonsez.KTweaker.apk
-	cp $PARENT_DIR/ktapps/com.ktoonsez.KTmonitor.apk $PACKAGEDIR/system/app/com.ktoonsez.KTmonitor.apk
+if [ $ADD_STWEAKS = 'Y' ]; then
+	cp -R $PARENT_DIR/impapps/STweaks $PACKAGEDIR/system/app/STweaks
+	#cp $PARENT_DIR/impapps/STweaks/STweaks.apk $PACKAGEDIR/system/app/STweaks/STweaks.apk
 fi;
 
 if [ -e $KERNELDIR/arch/arm/boot/zImage ]; then
@@ -92,7 +92,7 @@ if [ -e $KERNELDIR/arch/arm/boot/zImage ]; then
 
 	echo "** Make boot.img"
 	./mkbootfs $INITRAMFS_DEST | gzip > $PACKAGEDIR/ramdisk.gz
-	./mkbootimg --cmdline "$RD_CMDLINE" --kernel $PACKAGEDIR/zImage --ramdisk $PACKAGEDIR/ramdisk.gz --base 0x80200000 --pagesize 2048 --ramdisk_offset 0x02000000 --output $PACKAGEDIR/boot.img 
+	./mkbootimg --cmdline "$RD_CMDLINE" --kernel $PACKAGEDIR/zImage --ramdisk $PACKAGEDIR/ramdisk.gz --base 0x80200000 --pagesize 2048 --offset 0x02000000 --output $PACKAGEDIR/boot.img 
 	#if [ $EXEC_LOKI = 'Y' ]; then
 	#	echo "Executing loki"
 	#	./loki_patch-linux-x86_64 boot aboot$CARRIER.img $PACKAGEDIR/boot.img $PACKAGEDIR/boot.lok
@@ -103,7 +103,7 @@ if [ -e $KERNELDIR/arch/arm/boot/zImage ]; then
 	#if [ $EXEC_LOKI = 'Y' ]; then
 	#	cp -R ../META-INF-SEC ./META-INF
 	#else
-		cp -R $PARENT_DIR/ktapps/META-INF .
+		cp -R $PARENT_DIR/impapps/META-INF .
 	#fi;
 	cp -R ../kernel .
 
