@@ -730,6 +730,8 @@ on nonencrypted
     class_start late_start
 
 on charger
+    #disable zen decision
+    write /sys/kernel/zen_decision/enabled 0
     mount ext4 /dev/block/platform/msm_sdcc.1/by-name/system /system wait ro
     copy /system/etc/battery_charging_temp.data /sys/class/power_supply/battery/batt_temp_table
     chmod 0664 /sys/class/power_supply/battery/batt_temp_table
@@ -978,6 +980,11 @@ service DR-daemon /system/bin/ddexe
     class main
     user root
     group system radio inet net_raw
+
+#service SMD-daemon /system/bin/smdexe
+#    class main
+#    user root
+#    group system radio inet net_raw
 
 service BCS-daemon /system/bin/connfwexe
     class main

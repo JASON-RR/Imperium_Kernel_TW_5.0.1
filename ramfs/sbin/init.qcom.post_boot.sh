@@ -395,7 +395,3 @@ esac
 insmod /system/lib/modules/adsprpc.ko
 chown -h system.system /dev/adsprpc-smd
 chmod -h 666 /dev/adsprpc-smd
-
-# decrease min free values
-echo 0,1,2,4,9,12 > /sys/module/lowmemorykiller/parameters/adj
-echo 2560 > /proc/sys/vm/min_free_kbytes
