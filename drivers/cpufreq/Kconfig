@@ -254,6 +254,15 @@ config CPU_FREQ_DEFAULT_GOV_BARRY_ALLEN
 	  you to get a full dynamic cpu frequency capable system by simply
 	  loading your cpufreq low-level hardware driver, using the
 	  'barry_allen' governor for latency-sensitive workloads.
+	  
+config CPU_FREQ_DEFAULT_GOV_ARTERACTIVE
+	bool "arteractive"
+	select CPU_FREQ_GOV_ARTERACTIVE
+	help
+	  Use the CPUFreq governor 'arteractive' as default. This allows
+	  you to get a full dynamic cpu frequency capable system by simply
+	  loading your cpufreq low-level hardware driver, using the
+	  'arteractive' governor for latency-sensitive workloads.
 
 endchoice
 
@@ -554,6 +563,12 @@ config CPU_FREQ_GOV_OPTIMAX
 config CPU_FREQ_GOV_PRESERVATIVE
 	tristate "'preservative' cpufreq governor"
 	depends on CPU_FREQ
+	
+config CPU_FREQ_GOV_ARTERACTIVE
+	tristate "'arteractive' cpufreq policy governor"
+	help
+	  'arteractive' - This driver adds the interactive governor
+	  from the SM-G900F source drop.
 
 config SEC_DVFS
 	bool "DVFS job"
